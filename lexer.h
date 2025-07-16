@@ -10,8 +10,11 @@ typedef enum {
     TOK_REGISTER,   /**< רגיסטר (למשל R0, R13) */
     TOK_NUMBER,     /**< מספר (decimal או 0x hex) */
     TOK_DIRECTIVE,  /**< דירקטיבה (.data, .string וכו') */
+    TOK_STRING,  /**< ערך מחרוזת - "Hello world" */
     TOK_SEPARATOR,  /**< מפרידים (',' ':' ';' וכו') */
-    TOK_EOF         /**< סוף שורה (או קובץ) */
+    TOK_EOF,         /**< סוף שורה (או קובץ) */
+    TOK_MATRIX,
+    TOK_INVALID
 } TokenType;
 
 
@@ -39,4 +42,11 @@ Token* lexer_next_token(void);
  */
 void   lexer_free_token(Token *tok);
 
+int is_label(const char *token_text);
+int is_register(const char *token_text);
+int is_mnemonic(const char *token_text);
+int is_number(const char *token_text);
+int is_directive(const char *token_text);
+int is_matrix(const char *token_text);
+int valid_len(const char *token_text, int num);
 #endif /* LEXER_H */
