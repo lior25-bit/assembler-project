@@ -26,4 +26,10 @@ void report_error(const char* message, int line_num);
 void mark_entry(const char* name);
 void free_symbol_table(void);
 
+/* NNEDS TO BE WRITTEN LATER!!!*/
+SymbolTable* create_symbol_table(void);
+void add_to_hash_table(SymbolTable* table, char* name, int address, int is_data, int is_extern);
+Symbol* find_in_hash_table(SymbolTable* table, const char* name);
+void free_hash_table(SymbolTable* table);
+
 #endif /* SYMBOL_TABLE_H */
