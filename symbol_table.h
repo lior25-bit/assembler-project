@@ -1,45 +1,29 @@
 #ifndef SYMBOL_TABLE_H
 #define SYMBOL_TABLE_H
 
-#include "frontend_error.h"  
-#include <stddef.h>          
-
-#define SYMBOL_TABLE_SIZE 256  
-
+#define SYMBOL_TABLE_SIZE 256 /* best size*/
 
 typedef struct Symbol {
-    char           *name;    /**< שם התווית (הוקצה דינמית) */
-    int             address; /**< הכתובת או האוף־סט של התווית */
-    struct Symbol  *next;    /**< קישור לסמל הבא באותה משבצת */
+    char* name;
+    int address;
+    int is_data;
+    int is_extern;
+    int is_entry;
+    struct Symbol* next;
 } Symbol;
-
-/**
- * @brief טבלת סמלים כמערך של משבצות (cells), כל משבצת מובילה לרשימה של Symbol.
- */
-typedef struct {
+ 
+/*זה בעצם המסנה של הטבלת סמלים שמאפשר גישה באו של 1 ולא באו של אן*/
+typedef struct {                 
     Symbol *cells[SYMBOL_TABLE_SIZE];
 } SymbolTable;
 
-/**
- * @brief מאתחל טבלת סמלים: מאפס כל משבצת ל-NULL.
- * @param st מצביע לטבלת סמלים לא מאותחלת
- */
-void symtab_init(SymbolTable *st);
+extern Symbol* symbol_table_head;
 
-/**
- * @brief מוסיף סמל חדש (תווית) לטבלת הסמלים.
- 
- */
-int symtab_add(SymbolTable *st,const char *name,int address,FrontErrorInfo *errors,int max_errors);
-
-/**
- * @brief מחפש סמל לפי שם בתאי הטבלה.
- */
-Symbol* symtab_get(const SymbolTable *st,const char *name);
-
-/**
- * @brief משחרר את כל הזיכרון של הסמלים בטבלה.
- */
-void symtab_free(SymbolTable *st);
+/* functions */
+void add_symbol(char* name, int address, int is_data, int is_extern);
+Symbol* find_symbol(const char* name);
+void report_error(const char* message, int line_num);
+void mark_entry(const char* name);
+void free_symbol_table(void);
 
 #endif /* SYMBOL_TABLE_H */
