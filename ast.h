@@ -46,14 +46,14 @@ typedef struct {
 
 }Operand;
 
-typedef struct {
+typedef struct ASTNode {
 
     OpCode opcode;
     Operand operands[2];
     int address;
     char* label;
     char* original_line;
-    struct ASTNode *next; /*שינוי כדיי להפוך לרשימה מקושרת*/
+    struct ASTNode* next; /*שינוי כדיי להפוך לרשימה מקושרת*/
 }ASTNode;
 
 /* Operand builders */
