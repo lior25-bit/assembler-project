@@ -23,9 +23,7 @@ typedef enum {
     OP_RED,
     OP_PRN,
     OP_RTS,
-    OP_STOP
-
-/*הנחיות*/
+    OP_STOP,
    DIR_DATA,
    DIR_STRING,
    DIR_MAT,
