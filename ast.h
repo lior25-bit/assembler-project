@@ -24,6 +24,14 @@ typedef enum {
     OP_PRN,
     OP_RTS,
     OP_STOP
+
+/*הנחיות*/
+   DIR_DATA,
+   DIR_STRING,
+   DIR_MAT,
+   DIR_ENTRY,
+   DIR_EXTERN
+
 } OpCode;
 
 typedef enum {
