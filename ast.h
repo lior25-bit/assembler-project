@@ -77,7 +77,6 @@ void append_ast_node(ASTNode** head, ASTNode* new_node);
 
 /* Memory freeing functions */
 void free_operand(Operand* op);
-void free_label(ASTNode* node);
 void free_node(ASTNode* node);
 
 /* Debug printing */
