@@ -70,8 +70,10 @@ Operand new_label(char* input);
 Operand new_matrix(int row_reg, int col_reg);
 Operand empty_operand(void);
 
-/* AST node builder */
+
 ASTNode* new_node(OpCode op, Operand op1, Operand op2, int new_address, char* new_label, char* og_line, int data);
+/*מוסיף בסוף הרשימה נוד חדש*/
+void append_ast_node(ASTNode** head, ASTNode* new_node);
 
 /* Memory freeing functions */
 void free_operand(Operand* op);
