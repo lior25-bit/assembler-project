@@ -47,7 +47,7 @@ Operand empty_operand() {
     return op;
 }
 
-ASTNode* new_node(OpCode op, Operand op1, Operand op2, int new_address, char* new_label, char* og_line) {
+ASTNode* new_node(OpCode op, Operand op1, Operand op2, int new_address, char* new_label, char* og_line, int data) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->opcode = op;
     node->operands[0] = op1;
@@ -55,6 +55,7 @@ ASTNode* new_node(OpCode op, Operand op1, Operand op2, int new_address, char* ne
     node->address = new_address;
     node->label = strdup(new_label);
     node->original_line = strdup(og_line);
+    node->data_size = data;
     return node;
 }
 
@@ -153,4 +154,6 @@ void print_ast_node(ASTNode* node) {
 
     printf("Address: %d\n", node->address);
     printf("Original line: %s\n", node->original_line);
+
+    printf("data size: %d\n", node->data_size);
 }
