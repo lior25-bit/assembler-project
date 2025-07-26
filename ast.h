@@ -60,6 +60,7 @@ typedef struct ASTNode {
     char* label;
     char* original_line;
     struct ASTNode* next; /*שינוי כדיי להפוך לרשימה מקושרת*/
+    int data_size;
 }ASTNode;
 
 /* Operand builders */
