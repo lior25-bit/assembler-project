@@ -114,6 +114,7 @@ void print_operand(Operand op) {
 
 void print_opcode(ASTNode* node) {
     switch (node->opcode) {
+        /* instructions */
         case OP_MOV:  printf("MOV\n"); break;
         case OP_CMP:  printf("CMP\n"); break;
         case OP_ADD:  printf("ADD\n"); break;
@@ -130,6 +131,13 @@ void print_opcode(ASTNode* node) {
         case OP_PRN:  printf("PRN\n"); break;
         case OP_RTS:  printf("RTS\n"); break;
         case OP_STOP: printf("STOP\n"); break;
+       
+        /* Directives */
+        case DIR_DATA:   printf("DATA\n"); break;
+        case DIR_STRING: printf("STRING\n"); break;
+        case DIR_MAT:    printf("MAT\n"); break;
+        case DIR_ENTRY:  printf("ENTRY\n"); break;
+        case DIR_EXTERN: printf("EXTERN\n"); break;
         default:      printf("Unknown OpCode\n"); break;
     }
 }
