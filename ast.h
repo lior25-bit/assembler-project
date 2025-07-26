@@ -71,7 +71,7 @@ Operand new_matrix(int row_reg, int col_reg);
 Operand empty_operand(void);
 
 /* AST node builder */
-ASTNode* new_node(OpCode op, Operand op1, Operand op2, int new_address, char* new_label, char* og_line);
+ASTNode* new_node(OpCode op, Operand op1, Operand op2, int new_address, char* new_label, char* og_line, int data);
 
 /* Memory freeing functions */
 void free_operand(Operand* op);
