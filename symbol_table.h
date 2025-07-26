@@ -16,8 +16,8 @@ extern Symbol* symbol_table_head;
 void add_symbol(char* name, int address, int is_data, int is_extern);
 Symbol* find_symbol(const char* name);
 void mark_entry(const char* name);
-void free_symbol_table(void);
-void print_symbol_table(void);
+void free_symbol_table();
+void print_symbol_table();
 
 
 
