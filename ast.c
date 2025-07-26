@@ -12,6 +12,20 @@ IMPORTANT
 #include <string.h>   /* strdup */
 #include <stdio.h>    
 
+void append_ast_node(ASTNode** head, ASTNode* new_node) {
+    if (*head == NULL) {
+        *head = new_node;
+        return;
+    }
+
+    ASTNode* current = *head;
+    while (current->next != NULL) {
+        current = current->next;
+    }
+
+    current->next = new_node;
+}
+
 Operand new_immediate(int val) {
     Operand op;
     op.type = ARG_IMMEDIATE;
