@@ -70,6 +70,7 @@ ASTNode* new_node(OpCode op, Operand op1, Operand op2, int new_address, char* ne
     node->label = strdup(new_label);
     node->original_line = strdup(og_line);
     node->data_size = data;
+    node->next = NULL;
     return node;
 }
 
