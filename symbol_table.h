@@ -1,8 +1,6 @@
 #ifndef SYMBOL_TABLE_H
 #define SYMBOL_TABLE_H
 
-#define SYMBOL_TABLE_SIZE 256 /* best size*/
-
 typedef struct Symbol {
     char* name;
     int address;
