@@ -17,10 +17,11 @@ typedef struct {
 } MemoryManager;
 
 /* הצהרות לפונקציות המעבר הראשון */
-int first_pass(ASTNode* ast_head, SymbolTable* symbols, MemoryManager* memory);
-int process_node(ASTNode* node, SymbolTable* symbols, MemoryManager* memory);
+int first_pass(ASTNode* ast_head, MemoryManager* memory);
+int process_node(ASTNode* node, MemoryManager* memory);
 int is_directive(ASTNode* node);
 int is_extern_directive(ASTNode* node);
 int calculate_instruction_size(ASTNode* node);
+void update_data_symbols(Symbol* head, int ic);
 
 #endif /* FIRST_PASS_H */
