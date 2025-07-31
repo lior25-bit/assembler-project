@@ -60,7 +60,11 @@ typedef struct ASTNode {
     char* label;
     char* original_line;
     struct ASTNode* next; /*שינוי כדיי להפוך לרשימה מקושרת*/
-    int data_size;
+    int data_size; /*how many words it takes in the memory*/
+    int* data_values; /*array of values - datat*/
+    int data_count; /*how many values there are*/
+    char* string_value; /*array of values string*/
+
 }ASTNode;
 
 /* Operand builders */
@@ -77,6 +81,7 @@ void append_ast_node(ASTNode** head, ASTNode* new_node);
 
 /* Memory freeing functions */
 void free_operand(Operand* op);
+void free_label(ASTNode* node);
 void free_node(ASTNode* node);
 
 /* Debug printing */
