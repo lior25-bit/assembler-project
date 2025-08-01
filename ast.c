@@ -86,6 +86,11 @@ void free_operand(Operand* op) {
     op->type = ARG_NONE;
 }
 
+void free_label(ASTNode* node) {
+    if (node->label != NULL)
+        free(node->label);
+}
+
 void free_node(ASTNode* node) {
     if (!node) return;
 
