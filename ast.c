@@ -1,11 +1,7 @@
 /* file: ast.c
    description: AST code with functions used for building ast syntax tree.
    by: Lir Vine and Lior Tal.
-
-IMPORTANT 
- This act.c has operand building functions, actNode building function and free functions and print function for debug purpuses 
- The strings are being saved directly in act.c - in the future we might want to save it in symbol or string table - we need to see. for now this is good 
- */
+*/
 
 #include "ast.h"
 #include <stdlib.h>   /* malloc, free */
@@ -71,6 +67,12 @@ ASTNode* new_node(OpCode op, Operand op1, Operand op2, int new_address, char* ne
     node->original_line = strdup(og_line);
     node->data_size = data;
     node->next = NULL;
+
+    /* שדות חדשים */
+    node->data_values = NULL;
+    node->data_count = 0;
+    node->string_value = NULL;
+
     return node;
 }
 
@@ -100,6 +102,12 @@ void free_node(ASTNode* node) {
 
     if (node->original_line != NULL)
         free(node->original_line);
+
+    if (node->data_values != NULL)
+        free(node->data_values);
+
+    if (node->string_value != NULL)
+        free(node->string_value);
 
     free(node);
 }
@@ -146,14 +154,15 @@ void print_opcode(ASTNode* node) {
         case OP_PRN:  printf("PRN\n"); break;
         case OP_RTS:  printf("RTS\n"); break;
         case OP_STOP: printf("STOP\n"); break;
-       
+
         /* Directives */
         case DIR_DATA:   printf("DATA\n"); break;
         case DIR_STRING: printf("STRING\n"); break;
         case DIR_MAT:    printf("MAT\n"); break;
         case DIR_ENTRY:  printf("ENTRY\n"); break;
         case DIR_EXTERN: printf("EXTERN\n"); break;
-        default:      printf("Unknown OpCode\n"); break;
+
+        default: printf("Unknown OpCode\n"); break;
     }
 }
 
@@ -177,6 +186,5 @@ void print_ast_node(ASTNode* node) {
 
     printf("Address: %d\n", node->address);
     printf("Original line: %s\n", node->original_line);
-
-    printf("data size: %d\n", node->data_size);
+    printf("Data size: %d\n", node->data_size);
 }
