@@ -24,12 +24,11 @@ typedef enum {
     OP_PRN,
     OP_RTS,
     OP_STOP,
-   DIR_DATA,
-   DIR_STRING,
-   DIR_MAT,
-   DIR_ENTRY,
-   DIR_EXTERN
-
+    DIR_DATA,
+    DIR_STRING,
+    DIR_MAT,
+    DIR_ENTRY,
+    DIR_EXTERN
 } OpCode;
 
 typedef enum {
@@ -47,25 +46,22 @@ typedef struct {
         int value;
         int reg_value;
         char* label;
-        int matrix_regs[2]; 
+        int matrix_regs[2];
     };
-
-}Operand;
+} Operand;
 
 typedef struct ASTNode {
-
     OpCode opcode;
     Operand operands[2];
     int address;
     char* label;
     char* original_line;
-    struct ASTNode* next; /*שינוי כדיי להפוך לרשימה מקושרת*/
-    int data_size; /*how many words it takes in the memory*/
-    int* data_values; /*array of values - datat*/
-    int data_count; /*how many values there are*/
-    char* string_value; /*array of values string*/
-
-}ASTNode;
+    struct ASTNode* next;            /* linked list of instructions/directives */
+    int data_size;                   /* how many words this node takes in memory */
+    int* data_values;                /* for .data or .mat values */
+    int data_count;                  /* how many values there are */
+    char* string_value;             /* for .string directives */
+} ASTNode;
 
 /* Operand builders */
 Operand new_immediate(int val);
@@ -74,9 +70,10 @@ Operand new_label(char* input);
 Operand new_matrix(int row_reg, int col_reg);
 Operand empty_operand(void);
 
-
+/* Node builder */
 ASTNode* new_node(OpCode op, Operand op1, Operand op2, int new_address, char* new_label, char* og_line, int data);
-/*מוסיף בסוף הרשימה נוד חדש*/
+
+/* Append to AST list */
 void append_ast_node(ASTNode** head, ASTNode* new_node);
 
 /* Memory freeing functions */
@@ -90,7 +87,4 @@ void print_opcode(ASTNode* node);
 void print_label(ASTNode* node);
 void print_ast_node(ASTNode* node);
 
-
-
-
-#endif /* AST_H */
+#endif /* AST_H */
