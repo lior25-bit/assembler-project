@@ -4,6 +4,7 @@
 #include "ast.h"
 
 
+
 /* IC = כמה מילות זיכרון תופסות כל ההוראות
    DC = כמה מילות זיכרון תופסים כל הנתונים */
 
@@ -16,7 +17,6 @@ int first_pass(ASTNode* ast_head, MemoryManager* memory) {
         process_node(current, memory);
         current = current->next;
     }
-
     update_data_symbols(symbol_table_head, memory->IC);
 
     return 0;
@@ -24,20 +24,21 @@ int first_pass(ASTNode* ast_head, MemoryManager* memory) {
 
 /* Process a single AST node and update memory + symbol table */
 int process_node(ASTNode* node, MemoryManager* memory) {
-    int address = 0;
+    int address;
 
     if (node->label != NULL) {
-        SymbolType type;
+        if (!process_label(node)) return 0;
+    }
 
-        if (is_extern_directive(node)) {
-            type = SYMBOL_EXTERN;
-        } else if (is_directive(node)) {
-            type = SYMBOL_DATA;
-        } else {
-            type = SYMBOL_CODE;
-        }
+    if (is_extern_directive(node)) {
+        add_symbol(node->operands[0].string_value, 0, SYMBOL_EXTERN);
+        return 0; 
+    }
 
-        address = (type == SYMBOL_DATA) ? memory->DC : memory->IC + MEMORY_START;
+    SymbolType type = process_node_type(node);
+    address = (type == SYMBOL_DATA) ? memory->DC : memory->IC;
+
+    if (node->label != NULL && !is_entry(node) && !is_extern_directive(node)) {
         add_symbol(node->label, address, type);
     }
 
@@ -49,6 +50,37 @@ int process_node(ASTNode* node, MemoryManager* memory) {
 
     return 0;
 }
+
+
+SymbolType process_node_type(ASTNode* node) {
+    if (is_extern_directive(node)) {
+        return SYMBOL_EXTERN;
+    } 
+    else if (is_directive(node)) {
+        return SYMBOL_DATA;
+    } 
+    else {
+        return SYMBOL_CODE;
+    }
+}
+
+
+int process_label(ASTNode* node) {
+    /* is the label itself defiend properly */
+    if (!is_valid_label(node->label)) {
+        return 0;  
+    }
+
+    if (is_entry(node) || is_extern_directive(node)) {
+       /* lable should not contain entry or extern symbol */
+        label_on_extern_error(node->label); 
+        return 0;
+    }
+
+    return 1;  
+}
+
+
 
 /* Return the number of words the instruction occupies */
 int calculate_instruction_size(ASTNode* node) {
@@ -114,14 +146,34 @@ int is_entry(ASTNode* node) {
     return node->opcode == DIR_ENTRY;
 }
 
-/* האם הפקודה היא .string */
+
 int is_string_directive(ASTNode* node) {
     return node->opcode == DIR_STRING;
 }
 
-/* האם הפקודה היא .mat */
 int is_mat_directive(ASTNode* node) {
     return node->opcode == DIR_MAT;
+}
+
+int is_reserved_word(const char* name) {
+    /* Array that contains all the the reserved words */
+     const char* reserved_list[] = {
+    /* Opcodes */
+    "mov", "cmp", "add", "sub", "lea",
+    "clr", "not", "inc", "dec", 
+    "jmp", "bne", "jsr", "red", "prn", "rts", "stop", 
+    /* Directives */
+    "data", "string", "mat", "entry", "extern", 
+    /* Registers */
+    "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"
+    };
+    int count = sizeof(reserved_list) / sizeof(reserved_list[0]); /* Number of elements in reserved_list */
+    for(int i=0; i < count; i++) {
+        if(strcmp(name, reserved_list[i]) == 0) {
+            return 1; /* Word is a reserved word */
+        }
+    }
+    return 0;
 }
 
 /* מעדכן את הכתובות של סמלים מסוג DATA */
@@ -134,3 +186,42 @@ void update_data_symbols(Symbol* head, int ic) {
         current = current->next;
     }
 }
+
+int is_valid_label(const char* label) {
+    if(label == NULL) {
+        no_label_error(label);
+        return 0;
+    }
+    size_t length_label = strlen(label);
+
+    if(length_label == 0) {
+        empty_label_error(label);
+        return 0;
+    }
+
+    if(is_reserved_word(label)) {
+        reserved_word_label_error(label);
+        return 0;
+    }
+
+     if(!isalpha(label[0])) {
+        illigal_start_label_error(label);
+        return 0;
+    }
+
+    if(length_label > MAX_LABEL) {
+        label_too_long_error(label);
+        return 0;
+    }
+
+    for(int i=0; label[i] != '\0'; i++) {
+        if(!isalpha(label[i]) && !isdigit(label[i])) {
+            illigal_label(label);
+            return 0;
+        }
+    }
+   return 1;
+}
+
+
+
