@@ -2,13 +2,140 @@
    description: AST code with functions used for building ast syntax tree.
    by: Lir Vine and Lior Tal.
 */
-
+#include <stdlib.h>
 #include "ast.h"
-#include <stdlib.h>   /* malloc, free */
-#include <string.h>   /* strdup */
-#include <stdio.h>    
+#include "ast_logic.h"
+#include  "constants.h"
+#include "error_manager.h"
 
-void append_ast_node(ASTNode** head, ASTNode* new_node) {
+/* builders */
+/* This function creates an empty node */
+ASTNode* create_empty_node() {
+    ASTNode* node = calloc(1, sizeof(ASTNode)); /* calloc allocate memory and initilized it */
+    if(!node) {
+        /*error*/
+        return NULL;
+    }
+ return node;
+}
+
+/* This function creates a new empty node given the essinial field only */
+ASTNode* create_new_node(OpCode op, NodeInfo info) {
+    ASTNode* node = create_empty_node();
+    if(!node) {
+        /*error - */
+        return NULL;
+    }
+    node->opcode = op;
+    node->info = info;
+    
+    return node;
+}
+
+
+/* node setters */
+/* This function set operand to a given node */ 
+void set_operand_node(ASTNode* node, int op_index, Operand operand) {
+    if(!node) {
+        /*error - null node*/
+        return;
+    }
+    
+    /*if(op_index < 0 || op_index > 1 ) {
+    eroro invalid index operator
+        return;
+    } here using a function by fronterror */
+    
+  /*  if(node->operands[op_index].type != ARG_NONE) {
+        error
+        return; here will be function from froneteer*/
+
+    node->operands[op_index] = operand;
+}
+
+/*This function set dataInfo to a given node */
+void set_data_info(ASTNode* node, DataInfo* data) {
+    if(!node) {
+        /* error null node*/
+        return;
+    }
+    if(node->data) {
+        /* error data alre*/
+        return;
+    }
+
+    node->data = data;
+}
+
+/* This function set an address to a given node */
+void set_node_address(ASTNode* node, int address) {
+    if(!node) {
+        /*error*/
+        return;
+    }
+    /*
+    if(adress < MIN_ADDRESS || adress > MAX_ADDRESS) {
+        ERROR INVALID ADRESS
+       return
+    }*/
+    
+    node->info.address = address;
+}
+
+/* Operands builders */
+/* This function builds a new type Immidiate operand */
+Operand op_new_immediate(int val) {
+    Operand op;
+   /* if(val < MIN_IMIDIATE || val > MAX_IMIDIATE) {
+        error
+       op.type = ARG_NONE;
+    } */
+
+    op.type = ARG_IMMEDIATE;
+    op.value.imd_value = val;
+    return op;
+} 
+
+/* This function builds a new type Register operand */
+Operand op_new_register(int val) {
+    Operand op;
+    /*if(val < MIN_REGISTER || val > MAX_REGISTER) {
+        error
+        op.type = ARG_NONE; - frontend error
+    } */
+    op.type = ARG_REGISTER;
+    op.value.reg_value = val;
+    return op;
+}
+
+/* This function builds a new type direct operand */
+Operand op_new_label(char* label) {
+    Operand op;
+   /* if(!isValidlabel(label)) {
+        op.type = ARG_NONE;
+    } fromend cheakit */
+    op.type = ARG_DIRECT;
+    op.value.label = label;
+    return op;
+}
+
+/* This function buids new type matrix operand */
+Operand op_new_matrix(int row_reg, int col_reg) {
+    Operand op;
+    /*front cheaking matrix okay if not i send error*/
+    op.type = ARG_MATRIX;
+    op.value.matrix.row_reg = row_reg;
+    op.value.matrix.col_reg = col_reg;
+    return op;
+}
+
+Operand op_empty_operand() {
+    Operand op;
+    op.type = ARG_NONE;
+    return op;
+}
+
+void add_ast_node(ASTNode** head, ASTNode* new_node) {
     if (*head == NULL) {
         *head = new_node;
         return;
@@ -22,169 +149,69 @@ void append_ast_node(ASTNode** head, ASTNode* new_node) {
     current->next = new_node;
 }
 
-Operand new_immediate(int val) {
-    Operand op;
-    op.type = ARG_IMMEDIATE;
-    op.value = val;
-    return op;
-}
+/* free */
 
-Operand new_register(int val) {
-    Operand op;
-    op.type = ARG_REGISTER;
-    op.reg_value = val;
-    return op;
-}
-
-Operand new_label(char* input) {
-    Operand op;
-    op.type = ARG_DIRECT;
-    op.label = input;
-    return op;
-}
-
-Operand new_matrix(int row_reg, int col_reg) {
-    Operand op;
-    op.type = ARG_MATRIX;
-    op.matrix_regs[0] = row_reg;
-    op.matrix_regs[1] = col_reg;
-    return op;
-}
-
-Operand empty_operand() {
-    Operand op;
-    op.type = ARG_NONE;
-    return op;
-}
-
-ASTNode* new_node(OpCode op, Operand op1, Operand op2, int new_address, char* new_label, char* og_line, int data) {
-    ASTNode* node = malloc(sizeof(ASTNode));
-    node->opcode = op;
-    node->operands[0] = op1;
-    node->operands[1] = op2;
-    node->address = new_address;
-    node->label = strdup(new_label);
-    node->original_line = strdup(og_line);
-    node->data_size = data;
-    node->next = NULL;
-
-    /* שדות חדשים */
-    node->data_values = NULL;
-    node->data_count = 0;
-    node->string_value = NULL;
-
-    return node;
-}
-
-/* This function frees the memory inside Operand if needed */
+/*this function */
 void free_operand(Operand* op) {
-    if (!op) return;
-
-    if (op->type == ARG_DIRECT && op->label != NULL) {
-        free(op->label);
-        op->label = NULL;
+    if(!op) {
+        /*error*/
+        return;
     }
-
+    
+    if(op->type == ARG_DIRECT && op->value.label) {
+        free(op->value.label); /* we use free for a direct label since the memory could be allocaed by calloc/malloc */
+        op->value.label = NULL;
+    }
     op->type = ARG_NONE;
 }
 
-void free_label(ASTNode* node) {
-    if (node->label != NULL)
-        free(node->label);
-}
-
 void free_node(ASTNode* node) {
-    if (!node) return;
-
-    free_label(node);
+    if(!node) {
+        /*error*/
+        return;
+    }
     free_operand(&node->operands[0]);
     free_operand(&node->operands[1]);
 
-    if (node->original_line != NULL)
-        free(node->original_line);
+    if(node->info.label) {
+        free(node->info.label); 
+        node->info.label = NULL;
+    }
+    if(node->info.original_line) {
+        free(node->info.original_line); 
+        node->info.original_line = NULL;        
+    }
+    if(node->data) {
+        free_data_info(node->data);
+        node->data = NULL;
+    }
 
-    if (node->data_values != NULL)
-        free(node->data_values);
-
-    if (node->string_value != NULL)
-        free(node->string_value);
-
-    free(node);
 }
 
-void print_operand(Operand op) {
-    switch (op.type) {
-        case ARG_IMMEDIATE:
-            printf("Immediate: #%d\n", op.value);
-            break;
-        case ARG_REGISTER:
-            printf("Register: R%d\n", op.reg_value);
-            break;
-        case ARG_DIRECT:
-            printf("Label: %s\n", op.label);
-            break;
-        case ARG_MATRIX:
-            printf("Matrix: [%d][%d]\n", op.matrix_regs[0], op.matrix_regs[1]);
-            break;
-        case ARG_NONE:
-            printf("No operand\n");
-            break;
-        default:
-            printf("Unknown operand type\n");
-            break;
+void free_data_info(DataInfo* data) {
+    if(!data) {
+        /*error*/
+        return;
+    }
+    if(data->data_values) {
+        free(data->data_values);
+        data->data_values = NULL;
+    }
+    if (data->string_value) {
+        free(data->string_value); 
+        data->string_value = NULL;
+    }
+    free(data);
+}
+
+void free_ast_list(ASTNode* head) {
+    ASTNode* current = head;
+    while(current != NULL) {
+        ASTNode* temp = current;
+        current = current->next;
+        free_node(temp);
+        free(temp);
     }
 }
 
-void print_opcode(ASTNode* node) {
-    switch (node->opcode) {
-        /* instructions */
-        case OP_MOV:  printf("MOV\n"); break;
-        case OP_CMP:  printf("CMP\n"); break;
-        case OP_ADD:  printf("ADD\n"); break;
-        case OP_SUB:  printf("SUB\n"); break;
-        case OP_LEA:  printf("LEA\n"); break;
-        case OP_CLR:  printf("CLR\n"); break;
-        case OP_NOT:  printf("NOT\n"); break;
-        case OP_INC:  printf("INC\n"); break;
-        case OP_DEC:  printf("DEC\n"); break;
-        case OP_JMP:  printf("JMP\n"); break;
-        case OP_BNE:  printf("BNE\n"); break;
-        case OP_JSR:  printf("JSR\n"); break;
-        case OP_RED:  printf("RED\n"); break;
-        case OP_PRN:  printf("PRN\n"); break;
-        case OP_RTS:  printf("RTS\n"); break;
-        case OP_STOP: printf("STOP\n"); break;
 
-        /* Directives */
-        case DIR_DATA:   printf("DATA\n"); break;
-        case DIR_STRING: printf("STRING\n"); break;
-        case DIR_MAT:    printf("MAT\n"); break;
-        case DIR_ENTRY:  printf("ENTRY\n"); break;
-        case DIR_EXTERN: printf("EXTERN\n"); break;
-
-        default: printf("Unknown OpCode\n"); break;
-    }
-}
-
-void print_label(ASTNode* node) {
-    if (node->label != NULL)
-        printf("%s\n", node->label);
-    else
-        printf("(no label)\n");
-}
-
-void print_ast_node(ASTNode* node) {
-    printf("OpCode: ");
-    print_opcode(node);
-
-    printf("Operands:\n");
-    print_operand(node->operands[0]);
-    print_operand(node->operands[1]);
-
-    printf("Label: ");
-    print_label(node);
-
-    printf("Address: %d\n", node->address);
-    printf("Original line: %s\n", node->original_line);
-    printf("Data size: %d\n", node->data_size);
-}
