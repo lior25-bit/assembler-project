@@ -34,6 +34,7 @@ SymbolTable* create_empty_table();
 /* validations */
 int isValid_table(SymbolTable* table);
 int is_valid_symbol_name(const char* name);
+int is_empty_table(SymbolTable* table);
 
 /* helpers */
 SymbolType process_node_type(ASTNode* node, ErrorManager* error_mgr);
