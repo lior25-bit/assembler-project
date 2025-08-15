@@ -9,7 +9,7 @@
 #define MAX_MACRO_NAME 31
 #define MAX_LINE_LENGTH 82
 
-/* מבנה המאקרו */
+
 typedef struct {
     char name[MAX_MACRO_NAME];  
     char** lines;             
@@ -17,35 +17,36 @@ typedef struct {
     int capacity;               
 } Macro;
 
-/* הפונקציה הראשית של שלב הקדם */
+/*the main function of the macro part, taking care of all the important details including open a 
+* file creating am file and copy the macro to the new file without the macro callings*/
 void run_macro_processor(const char* filename, Macro macro_table[], int* macro_count);
 
-/* הוספת מאקרו לטבלה */
+/* the function adds a macro to the macro table */
 int add_macro(const char* name, Macro macro_table[], int* macro_count);
 
-/* הוספת שורה למאקרו */
+/* adding new line  to the macro table */
 void add_line_to_macro(Macro* macro, const char* line);
 
-/* חיפוש מאקרו לפי שם */
+/* searching macro by its name in the table*/
 Macro* find_macro(const char* name, Macro macro_table[], int macro_count);
 
-/* כתיבת השורות של מאקרו לקובץ */
+/*writing the line of the macro to the new am file*/
 void write_macro_lines(FILE* out, Macro* macro);
 
-/* שחרור כל הזיכרון של כל המאקרואים */
+/* free the memory of all the macros*/
 void free_macros(Macro macro_table[], int macro_count);
 
-/* זיהוי סוג השורה (start, end, call, normal) */
+/* start, end, call, normal */
 const char* what_type_is_macro(const char* line, char* macro_name_out,
                                 Macro macro_table[], int macro_count);
 
-/* זיהוי התחלת מאקרו */
+/* the function checks if we are at macro start */
 int is_macro_start(const char* line, char* macro_name);
 
-/* זיהוי סוף מאקרו */
+/* the function checks if we are at macro end */
 int is_macro_end(const char* line);
 
-/* זיהוי קריאה למאקרו */
+/* the function checks if we are at macro calling */
 int is_macro_call(const char* line, char* macro_name_out,
                   Macro macro_table[], int macro_count);
 

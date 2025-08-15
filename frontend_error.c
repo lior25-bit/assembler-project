@@ -7,7 +7,7 @@
 
 /**
  * This function uses frontend header and prints the error message and what line got the problem. Parser.c calls this function if there is a problem 
- * @param err - a pointer to FrontErrorInfo that contains the every frontend errors info.
+ * err - a pointer to FrontErrorInfo that contains the every frontend errors info.
  */
 void front_error_report(const FrontErrorInfo *err) {
     if (!err) {
@@ -17,4 +17,10 @@ void front_error_report(const FrontErrorInfo *err) {
     fprintf(stderr,
         "ERROR CODE: %d | LINE: %d\nERROR: %s\n",
         err->code, err->line, err->message);
+}
+
+char* strdup(const char* s) {
+    char* p = (char*)malloc(strlen(s) + 1);
+    if (p) strcpy(p, s);
+    return p;
 }
