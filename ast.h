@@ -1,22 +1,41 @@
 #ifndef AST_H
 #define AST_H
-
+#include "frontend_error.h"
+#include "lexer.h"
 /*
-    AST node construction uses an OpCode enum to represent instruction types.
-    Each opcode acts like a state in a simplified state machine, where the parser
-    chooses how to handle the line based on the opcode and operands.
+In this project we want to 'handle' the files by creating AST node that will represent everything : labels, instructions, directive, ect...
+In order to do that we create this AST. 
 */
-/* basic AST structs */
 
-typedef struct ASTNode ASTNode;
-
+/*enum that represent every instruction that there are, 16*/
 typedef enum {
- /*Instruction two Operands*/ OP_MOV,OP_CMP,OP_ADD,OP_SUB,OP_LEA,
-/*Instruction one Operand*/   OP_CLR,OP_NOT,OP_INC,OP_DEC,OP_JMP,OP_BNE,OP_JSR,OP_RED,OP_PRN,
-/*Instruction zero Operands*/ OP_RTS, OP_STOP,
- /*Directive*/ DIR_DATA,DIR_STRING,DIR_MAT,DIR_ENTRY,DIR_EXTERN
+    OP_MOV,
+    OP_CMP,
+    OP_ADD,
+    OP_SUB,
+    OP_LEA,
+    OP_CLR,
+    OP_NOT,
+    OP_INC,
+    OP_DEC,
+    OP_JMP,
+    OP_BNE,
+    OP_JSR,
+    OP_RED,
+    OP_PRN,
+    OP_RTS,
+    OP_STOP,
+    OP_NONE
 } OpCode;
 
+/*enum that checks if the line is directive line or unstruction line*/
+typedef enum {
+    NODE_INSTRUCTION,
+    NODE_DIRECTIVE, 
+    NODE_ERROR
+} NodeType;
+
+/*enum that checks which operand we have in this line*/
 typedef enum {
     ARG_IMMEDIATE,
     ARG_DIRECT,
@@ -25,72 +44,74 @@ typedef enum {
     ARG_NONE
 } ArgType;
 
-typedef struct {
-    int col_reg;
-    int row_reg;
-}Matrix;
+/*enum that checks which directive type we have in this line */
+typedef enum {
+    DIR_DATA,     /* .data */
+    DIR_STRING,   /* .string */
+    DIR_MAT,      /* .mat */
+    DIR_EXTERN,   /* .extern */
+    DIR_ENTRY,     /* .entry */
+    DIR_NONE
+} DirectiveType;
 
-typedef union {
-    int imd_value;
-    int reg_value;
-    char* label;
-    Matrix matrix;
- }ValOperand;
-
+/*In case of an instruction line*/
 typedef struct {
     ArgType type;
-    ValOperand value;
+    char *mat_label; 
+    union {
+        int   value;          /* ARG_IMMEDIATE */
+        int   reg_value;      /* ARG_REGISTER  */
+        char *label;          /* ARG_DIRECT    */
+        int   matrix_regs[2]; /* ARG_MATRIX    */
+    } val;
 } Operand;
 
+/*In case of a directive line*/
 typedef struct {
-    int address;
-    char* label;
-    char* original_line;
-    int line_num;
-} NodeInfo;
+    DirectiveType dir_type;
+    char* label; 
+    union {
+        struct DataVal {
+            int* values;
+            int count;
+        } data;      
+        char* string_val;                              
+        struct MatVal {
+            int rows, cols;
+            int* values;
+        } mat;   
+        char* ext_label;                          
+    } value;
+} DirectiveInfo;
 
-typedef struct {
-    int data_size;                   /* how many words this node takes in memory */
-    int* data_values;                /* for .data or .mat values */
-    int data_count;                  /* how many values there are */
-    char* string_value;             /* for string directives */
-}DataInfo;
-
-/* ASTNode node struct */
-struct ASTNode { 
-    /* essinial */
-    OpCode opcode;
-    NodeInfo info;
-    /* Optional */
-    Operand operands[2];
-    DataInfo* data;
-    ASTNode* next;            /* linked list of instructions/directives */
-};
-
-/* Node builder */
-ASTNode* create_empty_node();
-ASTNode* create_new_node(OpCode op, NodeInfo info);
-
-/* setters */
-void set_operand_node(ASTNode* node, int op_index, Operand operand);
-void set_data_info(ASTNode* node, DataInfo* data);
-void set_node_address(ASTNode* node, int address);
-
+/*The overall AST node that  we create for each line, supported by all 
+the other structs and enums that represent directive of instruction line*/
+typedef struct ASTNode {
+    NodeType        node_type;
+    OpCode          opcode;
+    Operand         operands[2];
+    int             address;
+    char           *label;
+    char           *original_line;
+    DirectiveInfo   directive;
+    FrontErrorInfo *error_info;
+    struct ASTNode *next;  
+} ASTNode;
 /* Operand builders */
-Operand op_new_immediate(int val);
-Operand op_new_register(int val);
-Operand op_new_label(char* label);
-Operand op_new_matrix(int row_reg, int col_reg);
-Operand op_empty_operand();
-
-void add_ast_node(ASTNode** head, ASTNode* new_node) ;
-
-/* Memory freeing functions */
-void free_operand(Operand* op);
-void free_node(ASTNode* node);  
-void free_data_info(DataInfo* data);
-void free_ast_list(ASTNode* head);  /*freeing a list given it's "head ast"*/
-
-
-
+Operand new_immediate(int val);
+Operand new_register(int val);
+Operand new_label(const char* input);
+Operand new_matrix(int row_reg, int col_reg);
+Operand empty_operand(void);
+/* AST node builder */
+ASTNode* build_directive_node(DirectiveType dir_type, const char* label,const void* value,int count_or_rows,int cols, const char* original_line) ;
+ASTNode* new_node(OpCode op, Operand op1, Operand op2, int new_address, char* new_label, char* og_line);
+ASTNode* build_error_node(const FrontErrorInfo* err_info, const char* original_line);
+Operand build_operand_full(const Token* tokens_arr, int *idx, int num_tokens);
+OpCode opcode_from_text(const char* str);
+/* Debug printing */
+void print_operand(Operand op);
+void print_opcode(ASTNode* node);
+void print_label(ASTNode* node);
+void print_ast_node(ASTNode* node);
 #endif
