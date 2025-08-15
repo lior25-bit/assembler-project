@@ -95,7 +95,7 @@ typedef struct ASTNode {
     char           *original_line;
     DirectiveInfo   directive;
     FrontErrorInfo *error_info;
-    struct ASTNode *next;  /* עכשיו זה אותו טיפוס כמו ASTNode* */
+    struct ASTNode *next;  
 } ASTNode;
 /* Operand builders */
 Operand new_immediate(int val);

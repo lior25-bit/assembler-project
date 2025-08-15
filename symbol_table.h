@@ -1,45 +1,56 @@
 #ifndef SYMBOL_TABLE_H
 #define SYMBOL_TABLE_H
 
-#include "frontend_error.h"  
-#include <stddef.h>          
+#include "constants.h"
+#include "ast.h"  
+#include "error_manager.h" 
 
-#define SYMBOL_TABLE_SIZE 256  
-
+typedef enum {
+    SYMBOL_CODE,  /* instruction */
+    SYMBOL_DATA,  /* directive */
+    SYMBOL_EXTERN, /* extern */
+    SYMBOL_NONE /* NULL */
+} SymbolType;
 
 typedef struct Symbol {
-    char           *name;    /**< שם התווית (הוקצה דינמית) */
-    int             address; /**< הכתובת או האוף־סט של התווית */
-    struct Symbol  *next;    /**< קישור לסמל הבא באותה משבצת */
+    char name[MAX_SYMBOL_NAME];
+    int address;
+    SymbolType type;
+    struct Symbol* next; /* serves as a linked list */ 
 } Symbol;
 
-/**
- * @brief טבלת סמלים כמערך של משבצות (cells), כל משבצת מובילה לרשימה של Symbol.
- */
+/* The SymbolTable struct holds the "head" of the table and each symbol points to the next symbol in the list
+   as part of his stucture */
 typedef struct {
-    Symbol *cells[SYMBOL_TABLE_SIZE];
+    Symbol* head;
+    Symbol* last;
 } SymbolTable;
 
-/**
- * @brief מאתחל טבלת סמלים: מאפס כל משבצת ל-NULL.
- * @param st מצביע לטבלת סמלים לא מאותחלת
- */
-void symtab_init(SymbolTable *st);
+/*functions*/
+/* building functions */
+Symbol* create_symbol(const char* name, int address, SymbolType type);
+SymbolTable* create_empty_table();
 
-/**
- * @brief מוסיף סמל חדש (תווית) לטבלת הסמלים.
- 
- */
-int symtab_add(SymbolTable *st,const char *name,int address,FrontErrorInfo *errors,int max_errors);
+/* validations */
+int isValid_table(SymbolTable* table);
+int is_valid_symbol_name(const char* name);
+int is_empty_table(SymbolTable* table);
 
-/**
- * @brief מחפש סמל לפי שם בתאי הטבלה.
- */
-Symbol* symtab_get(const SymbolTable *st,const char *name);
+/* helpers */
+SymbolType process_node_type(ASTNode* node, ErrorManager* error_mgr);
+Symbol* find_symbol(SymbolTable* table, const char* name);
+SymbolTable* add_head_symbol(SymbolTable* table, Symbol* head); 
+SymbolTable* add_last_symbol(SymbolTable* table, Symbol* last);
+void mark_entry(SymbolTable* table, const char* name);
+void update_data_symbols(SymbolTable* table, int ic);
+int get_symbol_count(SymbolTable* table); 
 
-/**
- * @brief משחרר את כל הזיכרון של הסמלים בטבלה.
- */
-void symtab_free(SymbolTable *st);
+/* freeing functions */
+void free_symbol_table(SymbolTable* table);
+                
 
-#endif /* SYMBOL_TABLE_H */
+
+#endif 
+
+               
+
