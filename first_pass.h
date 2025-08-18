@@ -1,37 +1,32 @@
 #ifndef FIRST_PASS_H
 #define FIRST_PASS_H
 
-#include "ast.h"
+/* Heathers needed for compilation */
+#include "error_manager.h"
+#include "memory_manager.h"
 #include "symbol_table.h"
-#include <string.h>
-#include <ctype.h>
+#include "ast.h"
 
-/* קבועים */
-#define MEMORY_START 100
-#define MAX_MEMORY 4096
-#define MAX_LABEL 30
 
-/* מבנה לניהול הזיכרון במהלך המעבר הראשון */
-typedef struct {
-    int IC; /* מונה הוראות */
-    int DC; /* מונה נתונים */
-    int code_image[MAX_MEMORY]; /* הוראות */
-    int data_image[MAX_MEMORY]; /* נתונים */
-} MemoryManager;
+/* Function Declarations */
 
-int first_pass(ASTNode* ast_head, MemoryManager* memory);
-int process_node(ASTNode* node, MemoryManager* memory);
+/* Main functions */
+int first_pass(ASTNode* ast_head, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr);
+int process_node(ASTNode* node, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr);
 
-int is_directive(ASTNode* node);
-int is_extern_directive(ASTNode* node);
-int is_valid_label(const char* label);
-int is_reserved_word(const char* name);
-int process_label(ASTNode* node);
+/* Helpers */
+int process_instruction_node(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr);
+int process_directive_node(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr);
 SymbolType process_node_type(ASTNode* node);
-int calculate_instruction_size(ASTNode* node);
+int is_valid_addressing_mode(OpCode op, ArgType src, ArgType dest, ErrorManager* error_mgr, int line);
+int validate_basic_node_params(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr);
+int validate_full_node_params(ASTNode* node, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr);
+int handle_node_label(ASTNode* node, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr);
+int calculate_instruction_size(ASTNode* node, ErrorManager* error_mgr);
+int calculate_matrix_memory(int rows, int cols);
 
-void update_data_symbols(Symbol* head, int ic);
+#endif
 
-#endif /* FIRST_PASS_H */
+
 
 
