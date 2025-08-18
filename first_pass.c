@@ -1,93 +1,310 @@
 #include "first_pass.h"
-#include "symbol_table.h"
-#include "middle_error.h"
 #include "ast.h"
+#include "ast_logic.h"
+#include <string.h>
 
+int first_pass(ASTNode* ast_head, MemoryManager* memory, SymbolTable* symbol_table, ErrorManager* error_mgr) {
+    ASTNode* current;
 
+    if (!memory || !symbol_table || !error_mgr) {
+        return 0;
+    }
 
-/* IC = כמה מילות זיכרון תופסות כל ההוראות
-   DC = כמה מילות זיכרון תופסים כל הנתונים */
-
-int first_pass(ASTNode* ast_head, MemoryManager* memory) {
-    memory->IC = 0;
+    memory->IC = MEMORY_START;
     memory->DC = 0;
 
-    ASTNode* current = ast_head;
+    current = ast_head;
     while (current != NULL) {
-        process_node(current, memory);
+        process_node(current, memory, symbol_table, error_mgr);
         current = current->next;
     }
-    update_data_symbols(symbol_table_head, memory->IC);
+    update_data_symbols(symbol_table, memory->IC);
+    print_all_errors(error_mgr);
 
+    return 1;
+}
+
+int process_node(ASTNode* node, MemoryManager* memory, SymbolTable* symbol_table, ErrorManager* error_mgr) {
+    if(!validate_full_node_params(node, memory, symbol_table, error_mgr)) {
+        return 0;
+    }
+
+    if(!handle_node_label(node, memory, symbol_table, error_mgr)) {
+        return 0;
+    }
+
+    if(is_directive_node(node)) {
+        if(!process_directive_node(node, memory, error_mgr)){
+            return 0;
+        }
+        return 1;
+    }
+
+    if(is_instruction_node(node)) {
+        if(!process_instruction_node(node, memory, error_mgr)) {
+            return 0;
+        }
+        return 1;
+    }
     return 0;
 }
 
-/* Process a single AST node and update memory + symbol table */
-int process_node(ASTNode* node, MemoryManager* memory) {
-    int address;
-
-    if (node->label != NULL) {
-        if (!process_label(node)) return 0;
+int validate_basic_node_params(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr) {
+    if(!node || !memory) {
+        add_error(error_mgr, ALLOC_FAILED, 0);
+        return 0;
     }
-
-    if (is_extern_directive(node)) {
-        add_symbol(node->operands[0].string_value, 0, SYMBOL_EXTERN);
-        return 0; 
+    if(!error_mgr) {
+        failed_alloc_error_mgr();
+        return 0;
     }
-
-    SymbolType type = process_node_type(node);
-    address = (type == SYMBOL_DATA) ? memory->DC : memory->IC;
-
-    if (node->label != NULL && !is_entry(node) && !is_extern_directive(node)) {
-        add_symbol(node->label, address, type);
-    }
-
-    if (is_directive(node)) {
-        memory->DC += node->data_size;
-    } else {
-        memory->IC += calculate_instruction_size(node);
-    }
-
-    return 0;
+    return 1;
 }
 
+int validate_full_node_params(ASTNode* node, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr) {
+    if(!node || !memory || !table) {
+        add_error(error_mgr, ALLOC_FAILED, 0);
+        return 0;
+    }
+    if(!error_mgr) {
+        failed_alloc_error_mgr();
+        return 0;
+    }
+    return 1;
+}
+
+int process_instruction_node(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr) {
+    int size;
+
+    if(!validate_basic_node_params(node, memory, error_mgr)) {
+        return 0;
+    }
+
+    if(memory->IC < MEMORY_START || memory->IC > MAX_MEMORY) {
+        add_error(error_mgr, INVALID_ADDRESS, 0);
+    }
+
+    /* הפרמטר האחרון בחותמת הוא int line -> לא להעביר מחרוזת */
+    if(!is_valid_addressing_mode(node->opcode,
+                                 node->operands[0].type,
+                                 node->operands[1].type,
+                                 error_mgr,
+                                 0)) {
+        add_error(error_mgr, INVALID_ADDRESSING_MODE, 0);
+    }
+
+    size = calculate_instruction_size(node, error_mgr);
+    memory->IC += size;
+
+    return 1;
+}
+
+int process_directive_node(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr) {
+    if(!validate_basic_node_params(node, memory, error_mgr)) {
+        return 0;
+    }
+
+    switch (node->directive.dir_type) {
+        case DIR_DATA:
+            return handle_data_directive(node, memory, error_mgr);
+        case DIR_STRING:
+            return handle_string_directive(node, memory, error_mgr);
+        case DIR_MAT:
+            return handle_mat_directive(node, memory, error_mgr);
+        case DIR_EXTERN:
+            return 1;
+        case DIR_ENTRY:
+            return 1;
+        default:
+            add_error(error_mgr, UNKNOWN_OPCODE, 0);
+            return 0;
+    }
+}
+
+int handle_data_directive(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr) {
+    int directive_size;
+
+    if(!validate_basic_node_params(node, memory, error_mgr)) {
+        return 0;
+    }
+
+    if(node->directive.value.data.count <= 0) {
+        add_error(error_mgr, INVALID_OPCODE, 0);
+        return 0;
+    }
+
+    directive_size = node->directive.value.data.count;
+
+    if(memory->DC + directive_size > MAX_ADDRESS) {
+        add_error(error_mgr, MEMORY_OVERFLOW, 0);
+        return 0;
+    }
+
+    memory->DC += directive_size;
+    return 1;
+}
 
 SymbolType process_node_type(ASTNode* node) {
-    if (is_extern_directive(node)) {
+    if(!node) {
+        return SYMBOL_NONE;
+    }
+    if (is_extern_directive_node(node)) {
         return SYMBOL_EXTERN;
-    } 
-    else if (is_directive(node)) {
+    } else if (is_directive_node(node)) {
         return SYMBOL_DATA;
-    } 
-    else {
+    } else {
         return SYMBOL_CODE;
     }
 }
 
+int validate_process_node_params(ASTNode* node, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr) {
+    if(!node || !memory || !table || !error_mgr) {
+        if(!error_mgr) {
+            failed_alloc_error_mgr();
+            return 0;
+        } else {
+            add_error(error_mgr, ALLOC_FAILED, 0);
+        }
+        return 0;
+    }
+    return 1;
+}
 
-int process_label(ASTNode* node) {
-    /* is the label itself defiend properly */
-    if (!is_valid_label(node->label)) {
-        return 0;  
+int handle_node_label(ASTNode* node, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr) {
+    SymbolType type;
+    int address;
+    Symbol* symbol;
+
+    if(!node->label) {
+        return 1;
     }
 
-    if (is_entry(node) || is_extern_directive(node)) {
-       /* lable should not contain entry or extern symbol */
-        label_on_extern_error(node->label); 
+    if(is_entry_directive_node(node)) {
+        add_error(error_mgr, ENTRY_LABEL, 0);
         return 0;
     }
 
-    return 1;  
+    type = process_node_type(node);
+    if(type == SYMBOL_DATA) {
+        address = memory->DC;
+    } else {
+        address = memory->IC;
+    }
+
+    if(find_symbol(table, node->label)) {
+        add_error(error_mgr, SYMBOL_ALREADY_DEFINED, 0);
+        return 0;
+    }
+
+    symbol = create_symbol(node->label, address, type);
+    if(!symbol) {
+        add_error(error_mgr, ALLOC_FAILED, 0);
+        return 0;
+    }
+
+    if(!add_last_symbol(table, symbol)) {
+        add_error(error_mgr, ALLOC_FAILED, 0);
+        return 0;
+    }
+
+    return 1;
 }
 
+int is_valid_addressing_mode(OpCode op, ArgType src, ArgType dest, ErrorManager* error_mgr, int line) {
+    if(op == OP_NONE) {
+        add_error(error_mgr, INVALID_ADDRESSING_MODE, line);
+        return 0;
+    }
 
+    if(is_two_op_instruction(op) && op != OP_LEA) {
+        if(src >= ARG_IMMEDIATE && src <= ARG_MATRIX) {
+            if(dest >= ARG_DIRECT && dest <= ARG_REGISTER) {
+                return 1;
+            }
+        }
+    }
+    if(is_one_op_instruction(op) && op != OP_PRN) {
+        if(dest >= ARG_DIRECT && dest <= ARG_REGISTER) {
+            return 1;
+        }
+        return 0;
+    }
+    if(is_zero_op_instruction(op)) {
+        if((src != ARG_NONE) || (dest != ARG_NONE)) {
+            return 0;
+        }
+        return 1;
+    }
+    return 0;
+}
 
-/* Return the number of words the instruction occupies */
-int calculate_instruction_size(ASTNode* node) {
-    int size = 1;
+int handle_string_directive(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr) {
+    int string_length;
 
-    Operand src = node->operands[0];
-    Operand dest = node->operands[1];
+    if(!validate_basic_node_params(node, memory, error_mgr)) {
+        return 0;
+    }
+
+    if(!node->directive.value.string_val) {
+        add_error(error_mgr, INVALID_OPCODE, 0);
+        return 0;
+    }
+
+    string_length = (int)strlen(node->directive.value.string_val) + 1;
+
+    if(memory->DC + string_length > MAX_ADDRESS) {
+        add_error(error_mgr, MEMORY_OVERFLOW, 0);
+        return 0;
+    }
+
+    memory->DC += string_length;
+    return 1;
+}
+
+int handle_mat_directive(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr) {
+    int matrix_size;
+
+    if(!validate_basic_node_params(node, memory, error_mgr)) {
+        return 0;
+    }
+
+    if(node->directive.value.mat.rows <= 0 || node->directive.value.mat.cols <= 0) {
+        add_error(error_mgr, INVALID_OPCODE, 0);
+        return 0;
+    }
+
+    matrix_size = calculate_matrix_memory(node->directive.value.mat.rows, node->directive.value.mat.cols);
+
+    if(memory->DC + matrix_size > MAX_ADDRESS) {
+        add_error(error_mgr, MEMORY_OVERFLOW, 0);
+        return 0;
+    }
+
+    memory->DC += matrix_size;
+    return 1;
+}
+
+int calculate_matrix_memory(int rows, int cols) {
+    return (rows * cols);
+}
+
+int calculate_instruction_size(ASTNode* node, ErrorManager* error_mgr) {
+    int size;
+    Operand src;
+    Operand dest;
+
+    if(!error_mgr) {
+        failed_alloc_error_mgr();
+        return 0;
+    }
+    if(!node) {
+        add_error(error_mgr, ALLOC_FAILED, 0);
+        return 0;
+    }
+
+    size = 1;
+    src = node->operands[0];
+    dest = node->operands[1];
 
     switch (node->opcode) {
         case OP_MOV:
@@ -95,9 +312,9 @@ int calculate_instruction_size(ASTNode* node) {
         case OP_ADD:
         case OP_SUB:
         case OP_LEA:
-            if (src.type == ARG_REGISTER && dest.type == ARG_REGISTER)
+            if (src.type == ARG_REGISTER && dest.type == ARG_REGISTER) {
                 size += 1;
-            else {
+            } else {
                 if (src.type == ARG_MATRIX) size += 3;
                 else if (src.type != ARG_NONE) size += 1;
 
@@ -124,104 +341,9 @@ int calculate_instruction_size(ASTNode* node) {
             break;
 
         default:
-            // כאן את יכולה להוסיף הודעת שגיאה או אזהרה על אופקוד לא חוקי
-            break;
+            add_error(error_mgr, INVALID_OPCODE, 0);
+            return 0;
     }
 
     return size;
 }
-
-/* בדיקה אם הפקודה היא הנחיה (.data / .string וכו') */
-int is_directive(ASTNode* node) {
-    return (node->opcode >= DIR_DATA && node->opcode <= DIR_EXTERN);
-}
-
-/* בדיקה אם הפקודה היא specifically .extern */
-int is_extern_directive(ASTNode* node) {
-    return node->opcode == DIR_EXTERN;
-}
-
-/* האם מדובר בהנחיה מסוג .entry */
-int is_entry(ASTNode* node) {
-    return node->opcode == DIR_ENTRY;
-}
-
-
-int is_string_directive(ASTNode* node) {
-    return node->opcode == DIR_STRING;
-}
-
-int is_mat_directive(ASTNode* node) {
-    return node->opcode == DIR_MAT;
-}
-
-int is_reserved_word(const char* name) {
-    /* Array that contains all the the reserved words */
-     const char* reserved_list[] = {
-    /* Opcodes */
-    "mov", "cmp", "add", "sub", "lea",
-    "clr", "not", "inc", "dec", 
-    "jmp", "bne", "jsr", "red", "prn", "rts", "stop", 
-    /* Directives */
-    "data", "string", "mat", "entry", "extern", 
-    /* Registers */
-    "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"
-    };
-    int count = sizeof(reserved_list) / sizeof(reserved_list[0]); /* Number of elements in reserved_list */
-    for(int i=0; i < count; i++) {
-        if(strcmp(name, reserved_list[i]) == 0) {
-            return 1; /* Word is a reserved word */
-        }
-    }
-    return 0;
-}
-
-/* מעדכן את הכתובות של סמלים מסוג DATA */
-void update_data_symbols(Symbol* head, int ic) {
-    Symbol* current = head;
-    while (current != NULL) {
-        if (current->type == SYMBOL_DATA) {
-            current->address += ic;
-        }
-        current = current->next;
-    }
-}
-
-int is_valid_label(const char* label) {
-    if(label == NULL) {
-        no_label_error(label);
-        return 0;
-    }
-    size_t length_label = strlen(label);
-
-    if(length_label == 0) {
-        empty_label_error(label);
-        return 0;
-    }
-
-    if(is_reserved_word(label)) {
-        reserved_word_label_error(label);
-        return 0;
-    }
-
-     if(!isalpha(label[0])) {
-        illigal_start_label_error(label);
-        return 0;
-    }
-
-    if(length_label > MAX_LABEL) {
-        label_too_long_error(label);
-        return 0;
-    }
-
-    for(int i=0; label[i] != '\0'; i++) {
-        if(!isalpha(label[i]) && !isdigit(label[i])) {
-            illigal_label(label);
-            return 0;
-        }
-    }
-   return 1;
-}
-
-
-
