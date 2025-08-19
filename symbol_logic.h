@@ -7,8 +7,7 @@
 #include "error_manager.h"
 
 /* Functions */
-int add_symbol_cheaked(SymbolTable* table, const char* name, int address, SymbolType type, ErrorManager* error_mgr, int line);
-int mark_entry_checked(SymbolTable* table, const char* name, ErrorManager* error_mgr, int line);
-
+int symbol_cheaked(SymbolTable* table, const char* name, int address, SymbolType type, ErrorManager* error_mgr);
+int mark_entry_checked(SymbolTable* table, const char* name, ErrorManager* error_mgr);
 
 #endif
