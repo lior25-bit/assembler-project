@@ -1,4 +1,4 @@
-/* This file is the handles error management for the assembler. */
+/* This file is the header that handles error management for the assembler. */
 
 #ifndef ERROR_MANAGER_H
 #define ERROR_MANAGER_H
@@ -39,11 +39,10 @@ typedef struct {
 
 /* Main Functions */
 void initialize_error_manager(ErrorManager* mgr);
-int  has_errors(const ErrorManager* mgr);
+int  has_errors(ErrorManager* mgr);
 void clear_errors(ErrorManager* mgr);
-void print_all_errors(const ErrorManager* mgr);
+void print_all_errors(ErrorManager* mgr);
 void add_error(ErrorManager* mgr, ErrorName name, const char* og_line);
-const char* error_message(ErrorName name);
-
+const char* get_error_message(ErrorName name);
 
 #endif 
