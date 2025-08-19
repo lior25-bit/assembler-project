@@ -1,3 +1,5 @@
+/* Second pass header file */
+
 #ifndef SECOND_PASS_H
 #define SECOND_PASS_H
 
@@ -20,11 +22,10 @@ int encode_mat_directive(ASTNode* node, MemoryManager* memory, ErrorManager* err
 /* Instruction encoding */
 int process_instruction_second_pass(ASTNode* node, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr);
 int encode_instruction(ASTNode* node, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr);
-int encode_operand(Operand operand, MemoryManager* memory, SymbolTable* table, int is_source, ErrorManager* error_mgr);
 
 /* Symbol functions */
-int get_symbol_address(SymbolTable* table, char* symbol_name);
-int validate_symbol_exists(SymbolTable* table, char* symbol_name, ErrorManager* error_mgr, int line);
+int get_symbol_address(SymbolTable* table, const char* symbol_name);
+int validate_symbol_exists(SymbolTable* table, const char* symbol_name, ErrorManager* error_mgr, int line);
 
 /* calculation helpers functions */
 int create_machine_word(int opcode, int src_mode, int dest_mode, int are);
@@ -32,5 +33,5 @@ void write_word_to_memory(MemoryManager* memory, int address, int word, int are)
 int get_addressing_mode_code(ArgType type);
 int calculate_operand_words(Operand operand);
 
-
 #endif
+
