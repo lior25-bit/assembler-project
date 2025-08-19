@@ -3,8 +3,6 @@
 
 /* Headers needed for compilation */
 #include "constants.h"
-#include "ast.h"  
-
 
 typedef enum {
     SYMBOL_CODE,  /* instruction */
@@ -41,6 +39,8 @@ int is_empty_table(SymbolTable* table);
 int is_reserved_word(const char* name);
 int is_valid_char_symbol_name(const char* name);
 int is_valid_address(int address);
+int is_valid_symbol_type(SymbolType type);
+
 
 /* helpers */
 Symbol* find_symbol(SymbolTable* table, const char* name);
