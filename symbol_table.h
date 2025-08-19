@@ -1,3 +1,4 @@
+/* This heather contains all the necassary structs and functions for symbol table management */
 #ifndef SYMBOL_TABLE_H
 #define SYMBOL_TABLE_H
 
