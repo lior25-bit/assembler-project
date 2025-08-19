@@ -1,3 +1,4 @@
+/* This header manages the file exportation */
 #ifndef FILE_EXPORT_H
 #define FILE_EXPORT_H
 
