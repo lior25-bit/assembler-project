@@ -3,6 +3,7 @@
 #ifndef SYMBOL_LOGIC_H
 #define SYMBOL_LOGIC_H
 
+#include "symbol_table.h"
 #include "error_manager.h"
 
 /* Functions */
