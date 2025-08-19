@@ -81,6 +81,11 @@ void add_error(ErrorManager* mgr, ErrorName name, const char* og_line) {
     mgr->count++;
 }
 
+/* This function takes care of errors when struct error manager could not */
+void failed_alloc_error_mgr() {
+    fprintf(stderr, "Error: error manager not allocated\n");
+}
+
 /* This function returns a string representation of the error message */
 const char* get_error_message(ErrorName name) {
     switch (name) {
