@@ -1,8 +1,11 @@
+/* This file contains the functions of the first pass of the assembler */
+
 #include "first_pass.h"
 #include "ast.h"
 #include "ast_logic.h"
 #include <string.h>
 
+/* This function is the main function of the first pass */
 int first_pass(ASTNode* ast_head, MemoryManager* memory, SymbolTable* symbol_table, ErrorManager* error_mgr) {
     ASTNode* current;
 
@@ -20,6 +23,7 @@ int first_pass(ASTNode* ast_head, MemoryManager* memory, SymbolTable* symbol_tab
     return 1;
 }
 
+/* This function is processing a given node */
 int process_node(ASTNode* node, MemoryManager* memory, SymbolTable* symbol_table, ErrorManager* error_mgr) {
     if(!validate_full_node_params(node, memory, symbol_table, error_mgr)) {
         return 0;
@@ -45,6 +49,7 @@ int process_node(ASTNode* node, MemoryManager* memory, SymbolTable* symbol_table
     return 0;
 }
 
+/* This function validates the basic parameters of a node */
 int validate_basic_node_params(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr) {
     if(!node || !memory) {
         add_error(error_mgr, ALLOC_FAILED, 0);
@@ -57,6 +62,7 @@ int validate_basic_node_params(ASTNode* node, MemoryManager* memory, ErrorManage
     return 1;
 }
 
+/* This function validates the extended paramenters of a node */
 int validate_full_node_params(ASTNode* node, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr) {
     if(!node || !memory || !table) {
         add_error(error_mgr, ALLOC_FAILED, 0);
@@ -69,6 +75,7 @@ int validate_full_node_params(ASTNode* node, MemoryManager* memory, SymbolTable*
     return 1;
 }
 
+/* This function processes an instruction node */
 int process_instruction_node(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr) {
     int size;
 
@@ -94,6 +101,7 @@ int process_instruction_node(ASTNode* node, MemoryManager* memory, ErrorManager*
     return 1;
 }
 
+/* This function process a directive node */
 int process_directive_node(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr) {
     if(!validate_basic_node_params(node, memory, error_mgr)) {
         return 0;
@@ -116,6 +124,7 @@ int process_directive_node(ASTNode* node, MemoryManager* memory, ErrorManager* e
     }
 }
 
+/* This function handle dara directuve */
 int handle_data_directive(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr) {
     int directive_size;
 
@@ -139,6 +148,7 @@ int handle_data_directive(ASTNode* node, MemoryManager* memory, ErrorManager* er
     return 1;
 }
 
+/* This function process the node type */
 SymbolType process_node_type(ASTNode* node) {
     if(!node) {
         return SYMBOL_NONE;
@@ -154,6 +164,7 @@ SymbolType process_node_type(ASTNode* node) {
     }
 }
 
+/* This function handle the node's label */
 int handle_node_label(ASTNode* node, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr) {
     SymbolType type;
     int address;
@@ -195,6 +206,7 @@ int handle_node_label(ASTNode* node, MemoryManager* memory, SymbolTable* table, 
     return 1;
 }
 
+/* This function checks if the addressing mode is valid */
 int is_valid_addressing_mode(OpCode op, ArgType src, ArgType dest, ErrorManager* error_mgr, const char* og_line) {
     if(op == OP_NONE) {
         add_error(error_mgr, INVALID_ADDRESSING_MODE, og_line);
@@ -224,6 +236,7 @@ int is_valid_addressing_mode(OpCode op, ArgType src, ArgType dest, ErrorManager*
     return 0;
 }
 
+/* This function handle string directive nodes */
 int handle_string_directive(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr) {
     int string_length;
 
@@ -247,6 +260,7 @@ int handle_string_directive(ASTNode* node, MemoryManager* memory, ErrorManager* 
     return 1;
 }
 
+/* This function handle matrix directive nodes */
 int handle_mat_directive(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr) {
     int matrix_size;
 
@@ -270,10 +284,12 @@ int handle_mat_directive(ASTNode* node, MemoryManager* memory, ErrorManager* err
     return 1;
 }
 
+/* This function calculates the memory required for a matrix */
 int calculate_matrix_memory(int rows, int cols) {
     return (rows * cols);
 }
 
+/* This function calculates the size of an instruction */
 int calculate_instruction_size(ASTNode* node, ErrorManager* error_mgr) {
     int size;
     Operand src;
