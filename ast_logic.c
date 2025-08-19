@@ -1,7 +1,9 @@
+/* This file contains the AST logic functions for the assembler */
+
 #include "ast_logic.h"
 #include <string.h>
-#include <stdio.h> 
 
+/* This functions cheaks if a given node is directive */
 int is_directive_node(ASTNode* node) {
     if (!node) {
         return 0;
@@ -9,6 +11,7 @@ int is_directive_node(ASTNode* node) {
     return (node->node_type == NODE_DIRECTIVE);
 }
 
+/* This function cheaks if a given node is instruction */
 int is_instruction_node(ASTNode* node) {
     if (!node) {
         return 0;
@@ -16,6 +19,7 @@ int is_instruction_node(ASTNode* node) {
     return (node->node_type == NODE_INSTRUCTION);
 }
 
+/* This function cheaks if a given node is extern directive */
 int is_extern_directive_node(ASTNode* node) {
     if (!node) {
         return 0;
@@ -24,6 +28,7 @@ int is_extern_directive_node(ASTNode* node) {
             node->directive.dir_type == DIR_EXTERN);
 }
 
+/* This function cheaks if a given node is entry directive */
 int is_entry_directive_node(ASTNode* node) {
     if (!node) {
         return 0;
@@ -32,6 +37,7 @@ int is_entry_directive_node(ASTNode* node) {
             node->directive.dir_type == DIR_ENTRY);
 }
 
+/* This function cheaks if a given node is data directive */
 int is_data_directive_node(ASTNode* node) {
     if (!node) {
         return 0;
@@ -40,6 +46,7 @@ int is_data_directive_node(ASTNode* node) {
             node->directive.dir_type == DIR_DATA);
 }
 
+/* This function cheaks if a given node is string directive */
 int is_string_directive_node(ASTNode* node) {
     if (!node) {
         return 0;
@@ -48,6 +55,7 @@ int is_string_directive_node(ASTNode* node) {
             node->directive.dir_type == DIR_STRING);
 }
 
+/* This function cheaks if a given node is matrix directive */
 int is_mat_directive_node(ASTNode* node) {
     if (!node) {
         return 0;
@@ -56,25 +64,30 @@ int is_mat_directive_node(ASTNode* node) {
             node->directive.dir_type == DIR_MAT);
 }
 
+/* This function cheaks if a given opcode is a directive */
 int is_directive_opcode(OpCode op) {
     (void)op;
     return 0;
 }
 
+/* This function cheaks if a given opcode is a zero operand instruction */
 int is_zero_op_instruction(OpCode op) {
     return (op == OP_RTS || op == OP_STOP);
 }
 
+/* This function cheaks if a given opcode is a one operand instruction */
 int is_one_op_instruction(OpCode op) {
     /* OP_CLR..OP_PRN */
     return (op >= OP_CLR && op <= OP_PRN);
 }
 
+/* This function cheaks if a given opcode is a two operand instruction */
 int is_two_op_instruction(OpCode op) {
     /* OP_MOV..OP_LEA */
     return (op >= OP_MOV && op <= OP_LEA);
 }
 
+/* This function cheaks if a given node has a label */
 int has_label_node(ASTNode* node) {
     if (!node) {
         return 0;
@@ -82,6 +95,7 @@ int has_label_node(ASTNode* node) {
     return (node->label != 0);
 }
 
+/* This function cheaks if a given node is has data */
 int has_data_node(ASTNode* node) {
     if (!node) {
         return 0;
@@ -94,6 +108,7 @@ int has_data_node(ASTNode* node) {
             node->directive.dir_type == DIR_MAT);
 }
 
+/* This function calculates the "size" a given node occupies in the memory */
 int calculate_memory_size_node(ASTNode* node) {
     if (!node) {
         return 0;
@@ -124,6 +139,7 @@ int calculate_memory_size_node(ASTNode* node) {
     return 0;
 }
 
+/* This function counts the number of operands in a given node */
 int count_node_operand(ASTNode* node) {
     int count;
     if (!node) {
