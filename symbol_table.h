@@ -41,7 +41,6 @@ int is_valid_char_symbol_name(const char* name);
 int is_valid_address(int address);
 int is_valid_symbol_type(SymbolType type);
 
-
 /* helpers */
 Symbol* find_symbol(SymbolTable* table, const char* name);
 SymbolTable* add_symbol_head(SymbolTable* table, Symbol* head); 
