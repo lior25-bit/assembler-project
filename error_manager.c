@@ -98,6 +98,9 @@ const char* get_error_message(ErrorName name) {
         case INVALID_ADDRESSING_MODE: return "Invalid addressing mode";
         case MEMORY_OVERFLOW:         return "Memory overflow";
         case INVALID_ADDRESS:         return "Invalid address";
+        case INVALID_SYMBOL_TYPE:   return "Invalid symbol type";
         default:                      return "Unknown error";
     }
 }
+
+
