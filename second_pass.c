@@ -1,313 +1,365 @@
+
+/* This file includes all the functions needed for the second pass */
 #include "second_pass.h"
 #include "ast_logic.h"
-#include <stdio.h>
+#include "symbol_logic.h"
 #include <string.h>
 
+static int ic_cursor = 0;
+static int dc_cursor = 0;
+
+static int encode_operand_internal(Operand operand, MemoryManager* memory, SymbolTable* table, int is_source, ErrorManager* error_mgr, const char* og_line);
+
+/* This function performs the second pass of the assembler, encoding all instructions and data into machine code. */
 int second_pass(ASTNode* ast_head, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr) {
-    ASTNode* current = ast_head;
-    
-    while (current != NULL) {
-        if (!process_node_second_pass(current, memory, table, error_mgr)) {
-            return 0;
-        }
-        current = current->next;
+    ASTNode* cur;
+
+    if (!memory) return 0;
+
+    ic_cursor = MEMORY_START;
+    dc_cursor = 0;
+
+    cur = ast_head;
+    while (cur) {
+        process_node_second_pass(cur, memory, table, error_mgr);
+        cur = cur->next;
     }
-    
-    if (has_errors(error_mgr)) {
-        return 0;
-    }
+
+    print_all_errors(error_mgr);
     return 1;
 }
 
+/* This functions process each node for the second pass */
 int process_node_second_pass(ASTNode* node, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr) {
-    if (!node) {
-        return 0;
-    }
-    
+    if (!node || !memory || !table) return 0;
+
     if (is_directive_node(node)) {
-        return handle_directive_second_pass(node, memory, table, error_mgr);
-    } 
-    
+        return process_directive_second_pass(node, memory, error_mgr);
+    }
     if (is_instruction_node(node)) {
         return process_instruction_second_pass(node, memory, table, error_mgr);
     }
-    
-    return 1;
+    return 0;
 }
 
-int handle_directive_second_pass(ASTNode* node, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr) {
-    if (node->directive.dir_type == DIR_ENTRY) {
-        return handle_entry_directive(node, table, error_mgr);
-    }
-    if (node->directive.dir_type == DIR_EXTERN) {
+/* This function process directive nodes */
+int process_directive_second_pass(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr) {
+    if (!node || !memory) return 0;
+
+    switch (node->directive.dir_type) {
+    case DIR_ENTRY:
         return 1;
+    case DIR_EXTERN:
+        return 1;
+    case DIR_DATA:
+        return encode_data_directive(node, memory, error_mgr);
+    case DIR_STRING:
+        return encode_string_directive(node, memory, error_mgr);
+    case DIR_MAT:
+        return encode_mat_directive(node, memory, error_mgr);
+    default:
+        add_error(error_mgr, UNKNOWN_OPCODE, node->original_line);
+        return 0;
     }
-    return 1;
 }
 
+/* This function handle entrt directive nodes */
 int handle_entry_directive(ASTNode* node, SymbolTable* table, ErrorManager* error_mgr) {
-    char* label_name = node->directive.value.ext_label;
-    Symbol* symbol = find_symbol(table, label_name);
-    
-    if (!symbol) {
-        add_error(error_mgr, SYMBOL_NO_EXIST, node->line_number);
-        return 0;
-    }
-    
-    if (symbol->type == SYMBOL_EXTERN) {
-        add_error(error_mgr, EXTERN_AND_ENTRY_LABEL, node->line_number);
-        return 0;
-    }
-    
-    mark_entry(table, label_name);
+    (void)node;
+    (void)table;
+    (void)error_mgr;
     return 1;
 }
 
-int process_instruction_second_pass(ASTNode* node, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr) {
-    int result = encode_instruction_word(node, memory, table, error_mgr);
-    if (!result) {
-        add_error(error_mgr, INVALID_OPCODE, node->line_number);
+/* This function encode data directive nodes */
+int encode_data_directive(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr) {
+    int i;
+    int n;
+    int* arr;
+
+    if (!node || !memory) return 0;
+
+    n = node->directive.value.data.count;
+    arr = node->directive.value.data.values;
+
+    if (n < 0) {
+        add_error(error_mgr, INVALID_OPCODE, node->original_line);
         return 0;
     }
-    return 1;
-}
-
-int encode_instruction_word(ASTNode* node, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr) {
-    int src_mode = get_addressing_mode_code(node->operands[0].type);
-    int dest_mode = get_addressing_mode_code(node->operands[1].type);
-    int first_word = build_first_word(node->opcode, src_mode, dest_mode);
-    
-    write_word_to_memory(memory, first_word);
-    
-    if (both_operands_are_registers(node)) {
-        encode_register_pair(node, memory);
-    } else {
-        if (!encode_operands_separately(node, memory, table, error_mgr)) {
+    for (i = 0; i < n; i++) {
+        if (dc_cursor >= MAX_MEMORY) {
+            add_error(error_mgr, MEMORY_OVERFLOW, node->original_line);
             return 0;
         }
+        memory->data_image[dc_cursor++] = arr ? arr[i] : 0;
     }
-    
     return 1;
 }
 
-int both_operands_are_registers(ASTNode* node) {
-    if (node->operands[0].type == ARG_REGISTER && node->operands[1].type == ARG_REGISTER) {
+/* This function incodes string directive nodes */
+int encode_string_directive(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr) {
+    const char* s;
+    int i;
+
+    if (!node || !memory) return 0;
+
+    s = node->directive.value.string_val;
+    if (!s) {
+        add_error(error_mgr, INVALID_OPCODE, node->original_line);
+        return 0;
+    }
+    for (i = 0; s[i] != '\0'; i++) {
+        if (dc_cursor >= MAX_MEMORY) {
+            add_error(error_mgr, MEMORY_OVERFLOW, node->original_line);
+            return 0;
+        }
+        memory->data_image[dc_cursor++] = (unsigned char)s[i];
+    }
+    if (dc_cursor >= MAX_MEMORY) {
+        add_error(error_mgr, MEMORY_OVERFLOW, node->original_line);
+        return 0;
+    }
+    memory->data_image[dc_cursor++] = 0;
+    return 1;
+}
+
+/* This function encodes matrix directive nodes */
+int encode_mat_directive(ASTNode* node, MemoryManager* memory, ErrorManager* error_mgr) {
+    int cells;
+    int i;
+    int* vals;
+
+    if (!node || !memory) return 0;
+
+    if (node->directive.value.mat.rows <= 0 || node->directive.value.mat.cols <= 0) {
+        add_error(error_mgr, INVALID_OPCODE, node->original_line);
+        return 0;
+    }
+
+    cells = node->directive.value.mat.rows * node->directive.value.mat.cols;
+    vals  = node->directive.value.mat.values;
+
+    for (i = 0; i < cells; i++) {
+        if (dc_cursor >= MAX_MEMORY) {
+            add_error(error_mgr, MEMORY_OVERFLOW, node->original_line);
+            return 0;
+        }
+        memory->data_image[dc_cursor++] = vals ? vals[i] : 0;
+    }
+    return 1;
+}
+
+/* This function process instruction nodes */
+int process_instruction_second_pass(ASTNode* node, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr) {
+    if (!node || !memory) return 0;
+    return encode_instruction(node, memory, table, error_mgr);
+}
+
+/* This function encodes instruction nodes */
+int encode_instruction(ASTNode* node, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr) {
+    int opcode;
+    int srcm;
+    int destm;
+    int word;
+    int both_regs;
+    Operand src;
+    Operand dst;
+
+    if (!node || !memory) return 0;
+
+    src = node->operands[0];
+    dst = node->operands[1];
+
+    opcode = node->opcode;
+    srcm   = get_addressing_mode_code(src.type);
+    destm  = get_addressing_mode_code(dst.type);
+
+    word = create_machine_word(opcode, srcm, destm, ARE_ABSOLUTE);
+    if (ic_cursor < 0 || ic_cursor >= MAX_MEMORY) {
+        add_error(error_mgr, MEMORY_OVERFLOW, node->original_line);
+        return 0;
+    }
+    write_word_to_memory(memory, ic_cursor, word, ARE_ABSOLUTE);
+    ic_cursor++;
+
+    both_regs = (src.type == ARG_REGISTER && dst.type == ARG_REGISTER);
+
+    if (both_regs) {
+        int regw;
+        regw = 0;
+        regw |= ((src.val.reg_value & REGISTER_MASK)  << SRC_REG_SHIFT);
+        regw |= ((dst.val.reg_value & REGISTER_MASK)  << DEST_REG_SHIFT);
+        if (ic_cursor >= MAX_MEMORY) {
+            add_error(error_mgr, MEMORY_OVERFLOW, node->original_line);
+            return 0;
+        }
+        write_word_to_memory(memory, ic_cursor, regw, ARE_ABSOLUTE);
+        ic_cursor++;
         return 1;
     }
-    return 0;
-}
 
-void encode_register_pair(ASTNode* node, MemoryManager* memory) {
-    int src_reg = node->operands[0].val.reg_value;
-    int dest_reg = node->operands[1].val.reg_value;
-    int reg_word = build_register_word(src_reg, dest_reg);
-    write_word_to_memory(memory, reg_word);
-}
-
-int encode_operands_separately(ASTNode* node, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr) {
-    if (node->operands[0].type != ARG_NONE) {
-        if (!encode_single_operand(node->operands[0], memory, table, 1, error_mgr)) {
-            return 0;
-        }
+    if (src.type != ARG_NONE) {
+        if (!encode_operand_internal(src, memory, table, 1, error_mgr, node->original_line)) return 0;
     }
-    
-    if (node->operands[1].type != ARG_NONE) {
-        if (!encode_single_operand(node->operands[1], memory, table, 0, error_mgr)) {
-            return 0;
-        }
+    if (dst.type != ARG_NONE) {
+        if (!encode_operand_internal(dst, memory, table, 0, error_mgr, node->original_line)) return 0;
     }
-    
     return 1;
 }
 
-int encode_single_operand(Operand operand, MemoryManager* memory, SymbolTable* table, int is_source, ErrorManager* error_mgr) {
+/* This function encode operand */
+int encode_operand(Operand operand, MemoryManager* memory, SymbolTable* table, int is_source, ErrorManager* error_mgr) {
+    return encode_operand_internal(operand, memory, table, is_source, error_mgr, 0);
+}
+
+/* This function encodes iternal operand */
+static int encode_operand_internal(Operand operand, MemoryManager* memory, SymbolTable* table, int is_source, ErrorManager* error_mgr, const char* og_line) {
+    int w;
+    Symbol* sym;
+
     if (operand.type == ARG_IMMEDIATE) {
-        return encode_immediate_operand(operand, memory);
+        if (ic_cursor >= MAX_MEMORY) {
+            add_error(error_mgr, MEMORY_OVERFLOW, og_line);
+            return 0;
+        }
+        w = (operand.val.value & VALUE_MASK);
+        write_word_to_memory(memory, ic_cursor, w, ARE_ABSOLUTE);
+        ic_cursor++;
+        return 1;
     }
+
     if (operand.type == ARG_DIRECT) {
-        return encode_direct_operand(operand, memory, table, error_mgr);
+        sym = find_symbol(table, operand.val.label);
+        if (!sym) {
+            add_error(error_mgr, SYMBOL_NO_EXIST, og_line);
+            return 0;
+        }
+        if (sym->type == SYMBOL_EXTERN) {
+            if (ic_cursor >= MAX_MEMORY) {
+                add_error(error_mgr, MEMORY_OVERFLOW, og_line);
+                return 0;
+            }
+            write_word_to_memory(memory, ic_cursor, 0, ARE_EXTERNAL);
+            add_extern_usage(memory, operand.val.label, ic_cursor);
+            ic_cursor++;
+            return 1;
+        } else {
+            if (ic_cursor >= MAX_MEMORY) {
+                add_error(error_mgr, MEMORY_OVERFLOW, og_line);
+                return 0;
+            }
+            write_word_to_memory(memory, ic_cursor, (sym->address & VALUE_MASK), ARE_RELOCATABLE);
+            ic_cursor++;
+            return 1;
+        }
     }
+
     if (operand.type == ARG_REGISTER) {
-        return encode_register_operand(operand, memory, is_source);
+        if (ic_cursor >= MAX_MEMORY) {
+            add_error(error_mgr, MEMORY_OVERFLOW, og_line);
+            return 0;
+        }
+        w = 0;
+        if (is_source) {
+            w |= ((operand.val.reg_value & REGISTER_MASK) << SRC_REG_SHIFT);
+        } else {
+            w |= ((operand.val.reg_value & REGISTER_MASK) << DEST_REG_SHIFT);
+        }
+        write_word_to_memory(memory, ic_cursor, w, ARE_ABSOLUTE);
+        ic_cursor++;
+        return 1;
     }
+
     if (operand.type == ARG_MATRIX) {
-        return encode_matrix_operand(operand, memory, table, error_mgr);
-    }
-    return 0;
-}
+        int idxw;
 
-int encode_immediate_operand(Operand operand, MemoryManager* memory) {
-    int value = operand.val.value;
-    int word = build_immediate_word(value);
-    write_word_to_memory(memory, word);
+        sym = find_symbol(table, operand.mat_label);
+        if (!sym) {
+            add_error(error_mgr, SYMBOL_NO_EXIST, og_line);
+            return 0;
+        }
+        if (ic_cursor >= MAX_MEMORY) {
+            add_error(error_mgr, MEMORY_OVERFLOW, og_line);
+            return 0;
+        }
+        if (sym->type == SYMBOL_EXTERN) {
+            write_word_to_memory(memory, ic_cursor, 0, ARE_EXTERNAL);
+            add_extern_usage(memory, operand.mat_label, ic_cursor);
+        } else {
+            write_word_to_memory(memory, ic_cursor, (sym->address & VALUE_MASK), ARE_RELOCATABLE);
+        }
+        ic_cursor++;
+
+        if (ic_cursor >= MAX_MEMORY) {
+            add_error(error_mgr, MEMORY_OVERFLOW, og_line);
+            return 0;
+        }
+        idxw = 0;
+        idxw |= ((operand.val.matrix_regs[0] & REGISTER_MASK) << SRC_REG_SHIFT);
+        idxw |= ((operand.val.matrix_regs[1] & REGISTER_MASK) << DEST_REG_SHIFT);
+        write_word_to_memory(memory, ic_cursor, idxw, ARE_ABSOLUTE);
+        ic_cursor++;
+
+        return 1;
+    }
+
     return 1;
 }
 
-int encode_direct_operand(Operand operand, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr) {
-    char* label = operand.val.label;
-    Symbol* symbol = find_symbol(table, label);
-    int word;
-    
-    if (!symbol) {
-        add_error(error_mgr, SYMBOL_NO_EXIST, 0);
-        return 0;
-    }
-    
-    if (symbol->type == SYMBOL_EXTERN) {
-        word = build_external_word();
-        add_external_reference(memory, label, memory->IC);
-    } else {
-        word = build_relocatable_word(symbol->address);
-    }
-    
-    write_word_to_memory(memory, word);
-    return 1;
-}
-
-int encode_register_operand(Operand operand, MemoryManager* memory, int is_source) {
-    int reg_num = operand.val.reg_value;
-    int word;
-    
-    if (is_source) {
-        word = build_source_register_word(reg_num);
-    } else {
-        word = build_dest_register_word(reg_num);
-    }
-    
-    write_word_to_memory(memory, word);
-    return 1;
-}
-
-int encode_matrix_operand(Operand operand, MemoryManager* memory, SymbolTable* table, ErrorManager* error_mgr) {
-    char* mat_label = operand.mat_label;
-    Symbol* symbol = find_symbol(table, mat_label);
-    int address_word;
-    int row_reg;
-    int col_reg;
-    int indices_word;
-    
-    if (!symbol) {
-        add_error(error_mgr, SYMBOL_NO_EXIST, 0);
-        return 0;
-    }
-    
-    if (symbol->type == SYMBOL_EXTERN) {
-        address_word = build_external_word();
-        add_external_reference(memory, mat_label, memory->IC);
-    } else {
-        address_word = build_relocatable_word(symbol->address);
-    }
-    
-    write_word_to_memory(memory, address_word);
-    
-    row_reg = operand.val.matrix_regs[0];
-    col_reg = operand.val.matrix_regs[1];
-    indices_word = build_matrix_indices_word(row_reg, col_reg);
-    write_word_to_memory(memory, indices_word);
-    
-    return 2;
-}
-
-int build_first_word(OpCode opcode, int src_mode, int dest_mode) {
-    int word = 0;
-    word = word | ((opcode & OPCODE_MASK) << OPCODE_SHIFT);
-    word = word | ((src_mode & ADDRESSING_MODE_MASK) << SRC_MODE_SHIFT);
-    word = word | ((dest_mode & ADDRESSING_MODE_MASK) << DEST_MODE_SHIFT);
-    word = word | ARE_ABSOLUTE;
-    return word;
-}
-
-int build_immediate_word(int value) {
-    int word = 0;
-    word = word | (value & VALUE_MASK);
-    word = word | ARE_ABSOLUTE;
-    return word;
-}
-
-int build_relocatable_word(int address) {
-    int word = 0;
-    word = word | (address & VALUE_MASK);
-    word = word | ARE_RELOCATABLE;
-    return word;
-}
-
-int build_external_word(void) {
-    return ARE_EXTERNAL;
-}
-
-int build_register_word(int src_reg, int dest_reg) {
-    int word = 0;
-    word = word | ((src_reg & REGISTER_MASK) << SRC_REG_SHIFT);
-    word = word | ((dest_reg & REGISTER_MASK) << DEST_REG_SHIFT);
-    word = word | ARE_ABSOLUTE;
-    return word;
-}
-
-int build_source_register_word(int reg_num) {
-    int word = 0;
-    word = word | ((reg_num & REGISTER_MASK) << SRC_REG_SHIFT);
-    word = word | ARE_ABSOLUTE;
-    return word;
-}
-
-int build_dest_register_word(int reg_num) {
-    int word = 0;
-    word = word | ((reg_num & REGISTER_MASK) << DEST_REG_SHIFT);
-    word = word | ARE_ABSOLUTE;
-    return word;
-}
-
-int build_matrix_indices_word(int row_reg, int col_reg) {
-    int word = 0;
-    word = word | ((row_reg & REGISTER_MASK) << SRC_REG_SHIFT);
-    word = word | ((col_reg & REGISTER_MASK) << DEST_REG_SHIFT);
-    word = word | ARE_ABSOLUTE;
-    return word;
-}
-
-void write_word_to_memory(MemoryManager* memory, int word) {
-    int index = memory->IC - MEMORY_START;
-    memory->code_image[index] = word;
-    memory->IC = memory->IC + 1;
-}
-
-void add_external_reference(MemoryManager* memory, char* symbol_name, int address) {
-    if (memory->external_count < MAX_EXTERNALS) {
-        strcpy(memory->external_refs[memory->external_count].symbol_name, symbol_name);
-        memory->external_refs[memory->external_count].address = address;
-        memory->external_count = memory->external_count + 1;
-    }
-}
-
-int get_addressing_mode_code(ArgType type) {
-    if (type == ARG_IMMEDIATE) {
-        return IMMEDIATE_MODE;
-    }
-    if (type == ARG_DIRECT) {
-        return DIRECT_MODE;
-    }
-    if (type == ARG_MATRIX) {
-        return MATRIX_MODE;
-    }
-    if (type == ARG_REGISTER) {
-        return REGISTER_MODE;
-    }
-    return IMMEDIATE_MODE;
-}
-
+/* This function get the symbol address */
 int get_symbol_address(SymbolTable* table, char* symbol_name) {
-    Symbol* symbol = find_symbol(table, symbol_name);
-    if (symbol) {
-        return symbol->address;
-    }
-    return -1;
+    Symbol* s;
+    if (!table || !symbol_name) return -1;
+    s = find_symbol(table, symbol_name);
+    if (!s) return -1;
+    return s->address;
 }
 
+/* This function validates symbol exsits */
 int validate_symbol_exists(SymbolTable* table, char* symbol_name, ErrorManager* error_mgr, int line) {
-    int address = get_symbol_address(table, symbol_name);
-    if (address < 0) {
-        add_error(error_mgr, SYMBOL_NO_EXIST, line);
+    (void)line;
+    if (get_symbol_address(table, symbol_name) < 0) {
+        add_error(error_mgr, SYMBOL_NO_EXIST, 0);
         return 0;
     }
+    return 1;
+}
+
+/* This function create the word in order */
+int create_machine_word(int opcode, int src_mode, int dest_mode, int are) {
+    int w = 0;
+    w |= ((opcode    & OPCODE_MASK)          << OPCODE_SHIFT);
+    w |= ((src_mode  & ADDRESSING_MODE_MASK) << SRC_MODE_SHIFT);
+    w |= ((dest_mode & ADDRESSING_MODE_MASK) << DEST_MODE_SHIFT);
+    w |= (are & 0x3);
+    return w;
+}
+
+/* This function writes a word to memory */
+void write_word_to_memory(MemoryManager* memory, int address, int word, int are) {
+    int v;
+    if (!memory) return;
+    if (address < 0 || address >= MAX_MEMORY) return;
+    v = word;
+    v &= ~0x3;
+    v |= (are & 0x3);
+    memory->code_image[address] = v;
+}
+
+/* This function gets the addressing mode code for a given argument type */
+int get_addressing_mode_code(ArgType type) {
+    switch (type) {
+    case ARG_IMMEDIATE: return IMMEDIATE_MODE;
+    case ARG_DIRECT:    return DIRECT_MODE;
+    case ARG_MATRIX:    return MATRIX_MODE;
+    case ARG_REGISTER:  return REGISTER_MODE;
+    default:            return 0;
+    }
+}
+
+/* This function calculates the number of words needed for a given operand */
+int calculate_operand_words(Operand operand) {
+    if (operand.type == ARG_NONE) return 0;
+    if (operand.type == ARG_MATRIX) return 2;
     return 1;
 }
