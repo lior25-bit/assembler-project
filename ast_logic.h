@@ -30,4 +30,3 @@ int count_node_operand(ASTNode* node);
 int get_operand_count(OpCode op);
 
 #endif
-
