@@ -45,5 +45,6 @@ void clear_errors(ErrorManager* mgr);
 void print_all_errors(ErrorManager* mgr);
 void add_error(ErrorManager* mgr, ErrorName name, const char* og_line);
 const char* get_error_message(ErrorName name);
+void failed_alloc_error_mgr();
 
 #endif 
